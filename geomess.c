@@ -91,7 +91,7 @@ struct geomess_node *get_node(uint16_t id)
 
 void login(struct geomess_node *from, struct geomess_msg *msg)
 {
-    int fd = open("map.csv", O_WRONLY|O_CREAT|O_APPEND);
+    int fd = open("map.csv", O_WRONLY|O_CREAT|O_APPEND, 0664);
     from->id = ntohs(msg->id);
     from->x = (double)ntohl(msg->info.login.x);
     from->y = (double)ntohl(msg->info.login.y);
@@ -196,6 +196,7 @@ void connect_failure(int fd, short revents, void *arg)
 int main(void) 
 {
 	evquick_init();
+    unlink("map.csv");
 	
 	// Create socket
 	int s_server;
