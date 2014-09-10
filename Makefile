@@ -1,6 +1,6 @@
 PICOTCP?=~/picotcp/build
 
-all: geomess libgm.a
+all: geomess libgm.a picomesh geopcap
 
 geomess: geomess.o libevquick.o
 	gcc -o geomess geomess.o libevquick.o -lm
@@ -20,6 +20,8 @@ libgm.test: libgm.c
 geomess.o: geomess.c
 	gcc -c geomess.c -I. -ggdb -O0
 
+geopcap.o: geopcap.c
+	gcc -c geopcap.c -I. -ggdb -O0
 
 libevquick.o: libevquick.c
 	gcc -c libevquick.c -I. -ggdb -O0
@@ -30,6 +32,8 @@ test: libgm.test
 picomesh: picomesh.o pico_dev_gm.a $(PICOTCP)/lib/libpicotcp.a 
 	gcc -o picomesh $^
 
+geopcap: geopcap.o libgm.o
+	gcc -o geopcap $^ -lpcap
 
 pico_dev_gm.a: pico_dev_gm.o libgm.o
 	ar cru $@ $^ 
@@ -43,4 +47,5 @@ pico_dev_gm.o: pico_dev_gm.c
 
 
 clean: 
-	rm -f libgm.test libgm.a geomess *.o tags picomesh
+	rm -f libgm.test libgm.a geomess *.o tags picomesh geopcap
+
