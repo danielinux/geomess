@@ -91,11 +91,19 @@ struct geomess_node *get_node(uint16_t id)
 
 void login(struct geomess_node *from, struct geomess_msg *msg)
 {
+    int fd = open("map.csv", O_WRONLY|O_CREAT|O_APPEND);
     from->id = ntohs(msg->id);
     from->x = (double)ntohl(msg->info.login.x);
     from->y = (double)ntohl(msg->info.login.y);
     from->range_max = (double)ntohl(msg->info.login.range_max);
     from->range_good = (double)ntohl(msg->info.login.range_good);
+    if (fd >= 0) {
+        char line[1000];
+        snprintf(line, 1000, "%lu,%lu,%lu\n", from->x, from->y, from->range_max);
+        (void)write(fd, line, strlen(line));
+        close(fd);
+    }
+
 }
 
 static int inrange(struct geomess_node *from, struct geomess_node *to)
