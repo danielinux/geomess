@@ -9,18 +9,20 @@ fig1 = plt.figure()
 ax = fig1.add_subplot(111, aspect = "equal")
 
 
-def addnode(x,y,r, minrange, maxrange):
+def addnode(x,y,rm,rg, minrange, maxrange):
     ax.plot([x],[y], 'ro')
-    circle=plt.Circle((x,y),r,color='g', fill=False)
+    circle=plt.Circle((x,y),rm,color='r', fill=False)
+    circleg=plt.Circle((x,y),rg,color='g', fill=False)
     fig1.gca().add_artist(circle)
-    if maxrange < x + r:
-        maxrange = x + r
-    if maxrange < y + r:
-        maxrange = y + r
-    if minrange > x - r:
-        minrange = x - r
-    if minrange > y - r:
-        minrange = y - r
+    fig1.gca().add_artist(circleg)
+    if maxrange < x + rm:
+        maxrange = x + rm
+    if maxrange < y + rm:
+        maxrange = y + rm
+    if minrange > x - rm:
+        minrange = x - rm
+    if minrange > y - rm:
+        minrange = y - rm
     return minrange,maxrange
 
 
@@ -30,7 +32,7 @@ while True:
     if l == "":
         break
     pos = l.split(',')
-    minrange,maxrange = addnode(int(pos[0]), int(pos[1]), int(pos[2]), minrange,maxrange)
+    minrange,maxrange = addnode(int(pos[0]), int(pos[1]), int(pos[2]), int(pos[3]), minrange,maxrange)
 f.close()
 
 print "min max:",

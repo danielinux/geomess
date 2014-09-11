@@ -99,17 +99,26 @@ void login(struct geomess_node *from, struct geomess_msg *msg)
     from->range_good = (double)ntohl(msg->info.login.range_good);
     if (fd >= 0) {
         char line[1000];
-        snprintf(line, 1000, "%lu,%lu,%lu\n", from->x, from->y, from->range_max);
+        snprintf(line, 1000, "%lu,%lu,%lu,%lu\n", from->x, from->y, from->range_max,from->range_good);
         (void)write(fd, line, strlen(line));
         close(fd);
     }
 
 }
 
+static double getrange(struct geomess_node *from)
+{
+    double range;
+    if (from->range_max <= from->range_good)
+        return from->range_max;
+    range = 1.0 * from->range_good + (1.0 * from->range_max - 1.0 * from->range_good) * drand48();
+    return range;
+}
+
 static int inrange(struct geomess_node *from, struct geomess_node *to)
 {
     double x1, y1, x2, y2;
-    double range = (double)from->range_max;
+    double range = getrange(from);
     x1 = (double)(from->x);
     y1 = (double)(from->y);
     x2 = (double)(to->x);
