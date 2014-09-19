@@ -124,7 +124,7 @@ static int inrange(struct geomess_node *from, struct geomess_node *to)
     x2 = (double)(to->x);
     y2 = (double)(to->y);
 
-    printf("Range:%lf, distance %lf\n", range, sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2)));
+    //printf("Range:%lf, distance %lf\n", range, sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2)));
 
     if ( pow(x1 - x2, 2) + pow(y1 - y2, 2) < pow(range, 2))
         return 1;
