@@ -35,10 +35,7 @@ while True:
     minrange,maxrange = addnode(int(pos[0]), int(pos[1]), int(pos[2]), int(pos[3]), minrange,maxrange)
 f.close()
 
-print "min max:",
-print minrange,
-print " ",
-print maxrange
+print("min max:",minrange," ",maxrange)
 ax.set_xlim((minrange,maxrange))
 ax.set_ylim((minrange,maxrange))
 
