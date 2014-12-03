@@ -1,3 +1,6 @@
 [submodule "lib/picotcp"]
 	path = lib/picotcp
 	url = https://github.com/tass-belgium/picotcp.git
+[submodule "lib/libevquick"]
+	path = lib/libevquick
+	url = https://github.com/danielinux/libevquick.git
