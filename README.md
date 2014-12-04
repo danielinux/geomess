@@ -12,7 +12,7 @@ How to build/use:
 
 - Start the geomess engine ("./geomess")
 
-- Start adding nodes to your simulated mesh (pico nodes are added via ./picomesh <id> <x> <y> <range_max> <range_good>)
+- Start adding nodes to your simulated mesh (pico nodes are added via ./picomesh id x y rangeMax rangeGood)
 
 - have fun!
 
