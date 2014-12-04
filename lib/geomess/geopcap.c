@@ -43,12 +43,12 @@ int main(int argc, char *argv[])
         struct pcap_pkthdr ph;
 
         if (ret > 0) {
-            printf("Dump one packet to file, %d bytes.\n", ret);
+            //printf("Dump one packet to file, %d bytes.\n", ret);
             gettimeofday(&ph.ts, NULL);
             ph.caplen = ret;  
             ph.len =  ret;
             pcap_dump((u_char *)pcapd, &ph, msg);
-            printf("done.\n");
+            //printf("done.\n");
             pcap_dump_flush(pcapd);
         }
     }
