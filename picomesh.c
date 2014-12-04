@@ -40,7 +40,6 @@ int main(int argc, char *argv[])
     if (argc > 7)
         exit(1);
     pico_stack_init();
-    pico_olsr_init();
     id = (uint16_t)atoi(argv[1]);
     x = (uint32_t)atoi(argv[2]);
     y = (uint32_t)atoi(argv[3]);
