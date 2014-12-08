@@ -15,4 +15,4 @@ done
 
 # picomesh node that is sending ping to node in routing table with
 # provided metric as last argument
-#./picomesh 19 0 0 15 15 8
+./picomesh 19 0 0 15 15 8
