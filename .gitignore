@@ -24,3 +24,5 @@
 
 # PCAP files
 *.pcap
+
+*.DS_Store
