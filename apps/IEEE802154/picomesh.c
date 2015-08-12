@@ -9,6 +9,7 @@
 
 /* GEOMESS */
 #include "pico_dev_sixlowpan.h"
+#include "radiodriver.h"
 
 #define EVER (;;)
 
@@ -29,13 +30,15 @@ void ping(pico_time now, void *arg) {
 	(void)now;
 	(void)arg;
 	
-	dev->send(dev, hello, 127);
+	dev->send(dev, hello, 6);
 	
 	pico_timer_add(1000, ping, NULL);
 }
 
 int main(int argc, const char *argv[]) {
-    
+	char dev_name[MAX_DEVICE_NAME];
+	radio_t *radio;
+	
     /* Geomess parameters */
     uint16_t id = 0;
     uint32_t x, y, range_max, range_good;
@@ -62,10 +65,18 @@ int main(int argc, const char *argv[]) {
     /* Check if this is the first node */
     if (1 == id)
         first_node = 1;
+	
+	snprintf(dev_name, MAX_DEVICE_NAME, "sixlowpan%04d", id);
+	
+    /* Create the sixlowpan-device and register it in picoTCP */
+    dev = pico_sixlowpan_create(dev_name);
     
-    /* Create the the sixlowpan-device and register it in picoTCP */
-    dev = pico_sixlowpan_create((uint16_t)id, x, y, range_max, range_good);
-    
+    /* Create the 802.15.4-radio instance */
+    radio = radio_create(id, x, y, range_max, range_good);
+	
+    /* Set the interface between picoTCP and the IEEE802.15.4-radio */
+	pico_sixlowpan_set_radio(dev, radio);
+
     /* Determine the network address and netmask */
     pico_string_to_ipv6("2015:0000:0000:0000:0000:0000:0000:0000", address.addr);
     pico_string_to_ipv6("ffff:ffff:ffff:ffff:0000:0000:0000:0000", netmask.addr);
@@ -76,7 +87,7 @@ int main(int argc, const char *argv[]) {
     /* Add the address to the link */
     pico_ipv6_link_add(dev, address, netmask);
 	
-	pico_timer_add(1000, ping, NULL);
+    pico_timer_add(1000, ping, NULL);
 	
     /* Endless loop */
     for EVER {
