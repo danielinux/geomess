@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
     x = (uint32_t)atoi(argv[1]);
     y = (uint32_t)atoi(argv[2]);
 
-    pcap = pcap_open_dead(DLT_RAW, 65535);
+    pcap = pcap_open_dead(DLT_IEEE802_15_4, 65535);
     if (!pcap) {
         perror("pcap");
         exit(2);
