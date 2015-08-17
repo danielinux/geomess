@@ -24,68 +24,54 @@ void cb(uint16_t ev, struct pico_socket *s)
 }
 
 void ping(pico_time now, void *arg) {
-	char hello[128] = "hello";
-	int ret = 0;
-	
-	(void)now;
-	(void)arg;
-	
-	dev->send(dev, hello, 6);
 	
 	pico_timer_add(1000, ping, NULL);
 }
 
 int main(int argc, const char *argv[]) {
-	char dev_name[MAX_DEVICE_NAME];
 	radio_t *radio;
 	
     /* Geomess parameters */
-    uint16_t id = 0;
-    uint32_t x, y, range_max, range_good;
-    
-    /* Network parameters */
-    struct pico_ip6 address, netmask;
-    
-    uint16_t i = 0;
+    uint16_t id = 0, pan_identifier = 0, i = 0;
+    uint32_t x = 0, y = 0, range_max = 0, range_good = 0;
+    uint8_t pan_channel = 0;
     
     /* Too much arguments given? */
-    if (argc > 6)
+    if (argc > 8 || argc < 8)
         exit(1);
     
     /* Parse in command-line variables */
     id = (uint8_t)atoi(argv[1]);
-    x = (uint32_t)atoi(argv[2]);
-    y = (uint32_t)atoi(argv[3]);
-    range_max = (uint32_t)atoi(argv[4]);
-    range_good = (uint32_t)atoi(argv[5]);
+	pan_identifier = (uint16_t)atoi(argv[2]);
+	pan_channel = (uint8_t)atoi(argv[3]);
+    x = (uint32_t)atoi(argv[4]);
+    y = (uint32_t)atoi(argv[5]);
+    range_max = (uint32_t)atoi(argv[6]);
+    range_good = (uint32_t)atoi(argv[7]);
     
     /* Initialise picoTCP */
     pico_stack_init();
     
-    /* Check if this is the first node */
-    if (1 == id)
-        first_node = 1;
+    /* Create the 802.15.4-radio instance */
+	if (!(radio = radio_create(id,
+							   pan_identifier,
+							   pan_channel,
+							   x,
+							   y,
+							   range_max,
+							   range_good)))
+	{
+		printf("Could not create radio_t-instance, bailing out..\n");
+		exit(1);
+	}
 	
-	snprintf(dev_name, MAX_DEVICE_NAME, "sixlowpan%04d", id);
+	/* Check if this is the first node */
+	if (0 == id) {
+		first_node = 1;
+	}
 	
     /* Create the sixlowpan-device and register it in picoTCP */
-    dev = pico_sixlowpan_create(dev_name);
-    
-    /* Create the 802.15.4-radio instance */
-    radio = radio_create(id, x, y, range_max, range_good);
-	
-    /* Set the interface between picoTCP and the IEEE802.15.4-radio */
-	pico_sixlowpan_set_radio(dev, radio);
-
-    /* Determine the network address and netmask */
-    pico_string_to_ipv6("2015:0000:0000:0000:0000:0000:0000:0000", address.addr);
-    pico_string_to_ipv6("ffff:ffff:ffff:ffff:0000:0000:0000:0000", netmask.addr);
-    
-    /* Add the identifier to the IPv6-address */
-    address.addr[15] += id;
-    
-    /* Add the address to the link */
-    pico_ipv6_link_add(dev, address, netmask);
+    dev = pico_sixlowpan_create(radio);
 	
     pico_timer_add(1000, ping, NULL);
 	
