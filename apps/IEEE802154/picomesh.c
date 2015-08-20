@@ -72,7 +72,7 @@ int main(int argc, const char *argv[]) {
 	
     /* Create the sixlowpan-device and register it in picoTCP */
     dev = pico_sixlowpan_create(radio);
-	
+    
     pico_timer_add(1000, ping, NULL);
 	
     /* Endless loop */
