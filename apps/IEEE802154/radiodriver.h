@@ -4,17 +4,29 @@
 #include "pico_dev_sixlowpan.h"
 
 /**
- *  <#Description#>
+ *  Creates a radio-driver instance to pass to the 6LoWPAN layer.
+ *  In this specific case this will create a gm_radio_t and set up
+ *  a connection with the Geomess-network. The gm_radio_t will get
+ *  casted to a proper radio_t * that you can give to the 6LoWPAN
+ *  adaption layer.
  *
- *  @param id             <#id description#>
- *  @param pan_identifier <#pan_identifier description#>
- *  @param pan_channel    <#pan_channel description#>
- *  @param x              <#x description#>
- *  @param y              <#y description#>
- *  @param range_max      <#range_max description#>
- *  @param range_good     <#range_good description#>
+ *  [TODO]: Simulate IEEE802.15.4 network commissioning and joining
+ *          by means of
  *
- *  @return <#return value description#>
+ *  @param id             uint16_t, identifier in the Geomess-network,
+ *                        will also be the 16-bit short address of the
+ *                        6LoWPAN-node.
+ *  @param pan_identifier uint16_t, identification number of the PAN to
+ *                        to set up or to join.
+ *  @param pan_channel    uint8_t, 11-26, channel the PAN is you want
+ *                        to set up or join is currently operating on.
+ *  @param x              uint32_t, geographical X-coördinate of the radio
+ *  @param y              uint32_t, geographical Y-coördinate of the radio
+ *  @param range_max      uint32_t, maximum radio-range
+ *  @param range_good     uint32_t, radio-range wherein the communication
+ *                        never fails.
+ *
+ *  @return radio_t *, radio-driver instance you can pass to 6LoWPAN.
  */
 radio_t *radio_create(uint16_t	id,
 					  uint16_t	pan_identifier,

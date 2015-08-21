@@ -25,7 +25,18 @@ void cb(uint16_t ev, struct pico_socket *s)
 
 void ping(pico_time now, void *arg) {
 	
-	pico_timer_add(1000, ping, NULL);
+    union pico_address dest;
+    struct pico_socket *s;
+    char hello[51] = "hello";
+    int ret;
+    pico_string_to_ipv6("FF02::FB", dest.ip6.addr);
+    (void)arg;
+    
+    s = pico_socket_open(PICO_PROTO_IPV6, PICO_PROTO_UDP, cb);
+    ret = pico_socket_sendto(s, hello, 51, &dest, short_be(5555));
+    printf("[PICOMESH]$ ping sent.\n", ret, strerror(pico_err));
+    pico_socket_close(s);
+    pico_timer_add(1000, ping, NULL);
 }
 
 int main(int argc, const char *argv[]) {

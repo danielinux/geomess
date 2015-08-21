@@ -11,10 +11,13 @@
 
 #include "radiodriver.h"
 
-//#define dbg do {} while (0);
-#define dbg	printf
+#define DEBUG
 
-#define MTU 127
+#ifdef DEBUG
+#define dbg	printf
+#else
+#define dbg do {} while (0);
+#endif
 
 #define CHECK_PARAM(a, b)   if(!(a)){ \
                                 dbg("[RADIODRIVER]$ %s %d", __FUNCTION__, (b)); \
@@ -117,12 +120,11 @@ static radio_rcode_t radio_transmit(radio_t *radio, void *buf, int len)
  *  Radio driver's RX function
  *
  *  @param radio radio_t *, radio-driver instance
- *  @param buf   void *, buffer to fill with received data
- *  @param len   int, len
+ *  @param buf   uint8_t[128], buffer to fill with received data
  *
  *  @return
  */
-static int radio_receive(radio_t *radio, void *buf, int len)
+static radio_rcode_t radio_receive(radio_t *radio, uint8_t buf[IEEE802154_PHY_MTU])
 {
 	/* Parse the generic radio structure to the internal Geomess radio-structure */
 	gm_radio_t *gm_radio = (gm_radio_t *)radio;
@@ -140,14 +142,24 @@ static int radio_receive(radio_t *radio, void *buf, int len)
 		return -1;
     
     /* 6LoWPAN excepts a 128-byte buffer with len + payload + fcs */
-    ret = geomess_recv(gm_radio->conn, buf + 1, len - 1);
-    ((uint8_t *)buf)[0] = (uint8_t)ret;
+    if ((ret = geomess_recv(gm_radio->conn, buf + 1, IEEE802154_PHY_MTU - 1)) < 0)
+        return RADIO_ERR_ERX;
+    
+    buf[0] = (uint8_t)ret;
 	
 	/* If a file-descriptor is selected, retrieve data from it */
-	return ret;
+	return RADIO_ERR_NOERR;
 }
 
-static radio_rcode_t radio_getEUI64(radio_t *radio, uint8_t buf[8])
+/**
+ *  Fills a buffer with the extended 64-bit address of a radio-instance
+ *
+ *  @param radio radio_t *, radio instance to get the address of.
+ *  @param buf   uint8_t[8], buffer to fill with the extended address.
+ *
+ *  @return radio_rcode_t, see "pico_sixlowpan_dev.h"
+ */
+static radio_rcode_t radio_addr_ext(radio_t *radio, uint8_t buf[8])
 {
 	/* Parse the generic radio structure to the internal Geomess radio-structure */
 	gm_radio_t *gm_radio = (gm_radio_t *)radio;
@@ -157,7 +169,14 @@ static radio_rcode_t radio_getEUI64(radio_t *radio, uint8_t buf[8])
 	return 0;
 }
 
-static uint16_t radio_getSHORT16(radio_t *radio)
+/**
+ *  Get the short 16-bit address of a radio-instance
+ *
+ *  @param radio radio_t *, radio-instance to get the address of.
+ *
+ *  @return uint16_t, short 16-bit address of the radio-instance.
+ */
+static uint16_t radio_addr_short(radio_t *radio)
 {
     /* Parse the generic radio structure to the internal Geomess radio-structure */
     gm_radio_t *gm_radio = (gm_radio_t *)radio;
@@ -165,7 +184,15 @@ static uint16_t radio_getSHORT16(radio_t *radio)
     return gm_radio->address_short;
 }
 
-static radio_rcode_t radio_setSHORT16(radio_t *radio, uint16_t short_16)
+/**
+ *  Set the short 16-bit address of a radio-instance
+ *
+ *  @param radio    radio_t *, radio-instnace to set the address of.
+ *  @param short_16 uint16_t, new 16-bit address of the radio-instance
+ *
+ *  @return radio_rcode_t, see "pico_sixlowpan_dev.h"
+ */
+static radio_rcode_t radio_set_short(radio_t *radio, uint16_t short_16)
 {
     /* Parse the generic radio structure to the internal Geomess radio-structure */
     gm_radio_t *gm_radio = (gm_radio_t *)radio;
@@ -176,7 +203,14 @@ static radio_rcode_t radio_setSHORT16(radio_t *radio, uint16_t short_16)
     return RADIO_ERR_NOERR;
 }
 
-static uint16_t radio_getPAN_ID(radio_t *radio)
+/**
+ *  Get the PAN identifier radio is connected to
+ *
+ *  @param radio uint16_t, PAN identifier of the radio
+ *
+ *  @return uint16_t, PAN-identifier of the radio
+ */
+static uint16_t radio_pan_id(radio_t *radio)
 {
     /* Parse the generic radio structure to the internal Geomess radio-structure */
     gm_radio_t *gm_radio = (gm_radio_t *)radio;
@@ -184,12 +218,13 @@ static uint16_t radio_getPAN_ID(radio_t *radio)
     return gm_radio->pan_identifier;
 }
 
-static inline void dbgEUI64(uint8_t buf[8])
+#ifdef DEBUG
+static void dbgEUI64(uint8_t buf[8])
 {
     int i = 0;
     int n = 8;
     
-    printf("EUI-64: ");
+    printf("[RADIODRIVER]$ EUI-64: ");
     for (i = 0; i < n; i++) {
         printf("%02X", buf[i]);
         if (i != n - 1)
@@ -197,6 +232,7 @@ static inline void dbgEUI64(uint8_t buf[8])
     }
     printf("\n");
 }
+#endif
 
 /* Based on picoapp MAC-generation */
 static void gen_addr_ext(uint8_t buf[8])
@@ -214,17 +250,29 @@ static void gen_addr_ext(uint8_t buf[8])
 }
 
 /**
- *  <#Description#>
+ *  Creates a radio-driver instance to pass to the 6LoWPAN layer.
+ *  In this specific case this will create a gm_radio_t and set up
+ *  a connection with the Geomess-network. The gm_radio_t will get
+ *  casted to a proper radio_t * that you can give to the 6LoWPAN 
+ *  adaption layer.
  *
- *  @param id             <#id description#>
- *  @param pan_identifier <#pan_identifier description#>
- *  @param pan_channel    <#pan_channel description#>
- *  @param x              <#x description#>
- *  @param y              <#y description#>
- *  @param range_max      <#range_max description#>
- *  @param range_good     <#range_good description#>
+ *  [TODO]: Simulate IEEE802.15.4 network commissioning and joining
+ *          by means of
  *
- *  @return <#return value description#>
+ *  @param id             uint16_t, identifier in the Geomess-network,
+ *                        will also be the 16-bit short address of the 
+ *                        6LoWPAN-node.
+ *  @param pan_identifier uint16_t, identification number of the PAN to
+ *                        to set up or to join.
+ *  @param pan_channel    uint8_t, 11-26, channel the PAN is you want
+ *                        to set up or join is currently operating on.
+ *  @param x              uint32_t, geographical X-coördinate of the radio
+ *  @param y              uint32_t, geographical Y-coördinate of the radio
+ *  @param range_max      uint32_t, maximum radio-range
+ *  @param range_good     uint32_t, radio-range wherein the communication
+ *                        never fails.
+ *
+ *  @return radio_t *, radio-driver instance you can pass to 6LoWPAN.
  */
 radio_t *radio_create(uint16_t	id,
 					  uint16_t	pan_identifier,
@@ -246,10 +294,10 @@ radio_t *radio_create(uint16_t	id,
 	/* Set the callbacks of this radio-instance */
 	gm_radio->radio.transmit = radio_transmit;
 	gm_radio->radio.receive = radio_receive;
-    gm_radio->radio.get_addr_ext = radio_getEUI64;
-    gm_radio->radio.get_addr_short = radio_getSHORT16;
-    gm_radio->radio.set_addr_short = radio_setSHORT16;
-    gm_radio->radio.get_pan_id = radio_getPAN_ID;
+    gm_radio->radio.get_addr_ext = radio_addr_ext;
+    gm_radio->radio.get_addr_short = radio_addr_short;
+    gm_radio->radio.set_addr_short = radio_set_short;
+    gm_radio->radio.get_pan_id = radio_pan_id;
 	
 	/* Set the short-ID by command-line options */
 	gm_radio->address_short = id;
