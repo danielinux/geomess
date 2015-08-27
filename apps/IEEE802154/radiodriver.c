@@ -93,27 +93,26 @@ static uint16_t calculate_crc16(uint8_t *buf, uint8_t len)
  *
  *  @return radio_rcode_t, see radio_rcode_t in 'pico_dev_sixlowpan.h'
  */
-static radio_rcode_t radio_transmit(radio_t *radio, void *buf, int len)
+static int radio_transmit(radio_t *radio, void *buf, int len)
 {
     gm_radio_t *gm_radio = NULL;
     uint16_t crc = 0;
+    size_t ret = 0;
     
     CHECK_PARAM(radio, __LINE__);
     CHECK_PARAM(buf, __LINE__);
 
 	/* Parse the generic radio structure to the internal Geomess radio-structure */
     gm_radio = (gm_radio_t *)radio;
-	
-    dbg("[RADIODRIVER]$ Payload: %04d bytes.\n", len);
     
     /* Calculate the FCS */
     crc = calculate_crc16(buf + 1, len - 3); /* buf + 1 to skip the length-byte */
-    dbg("[RADIODRIVER]$ FCS: %#X\n", crc);
     
     memcpy(buf + len - 2, (void *)&crc, 2);
     
-	/* Send the payload over this radio's geomesh-connection */
-	return geomess_send(gm_radio->conn, buf + 1, (uint32_t)len - 1); /* buf + 1 to skip the length-byte, len - 1 to don't cause overflow */
+    /* Send the payload over this radio's geomesh-connection */
+    /* buf + 1 to skip the length-byte, len - 1 to don't cause overflow */
+    return geomess_send(gm_radio->conn, buf + 1, (uint32_t)len - 1);
 }
 
 /**

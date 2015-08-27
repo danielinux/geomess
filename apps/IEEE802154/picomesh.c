@@ -12,6 +12,7 @@
 #include "radiodriver.h"
 
 #define EVER (;;)
+#define NUM_PING 10
 
 static int first_node = 0;
 
@@ -23,33 +24,56 @@ void cb(uint16_t ev, struct pico_socket *s)
 	(void) s;
 }
 
-void ping(pico_time now, void *arg) {
-	
-    union pico_address dest;
-    struct pico_socket *s;
-    char hello[51] = "hello";
-    int ret;
-    pico_string_to_ipv6("FF02::FB", dest.ip6.addr);
-    (void)arg;
-    
-    s = pico_socket_open(PICO_PROTO_IPV6, PICO_PROTO_UDP, cb);
-    ret = pico_socket_sendto(s, hello, 51, &dest, short_be(5555));
-    printf("[PICOMESH]$ ping sent.\n", ret, strerror(pico_err));
-    pico_socket_close(s);
-    pico_timer_add(1000, ping, NULL);
+void ping(struct pico_icmp6_stats *s)
+{
+    char host[50];
+    pico_ipv6_to_string(host, s->dst.addr);
+    if (s->err == 0) {
+        dbg("%lu bytes from %s: icmp_req=%lu ttl=%lu time=%lu ms\n", s->size, host, s->seq,
+            s->ttl, (long unsigned int)s->time);
+        if (s->seq >= NUM_PING)
+            exit(0);
+    } else {
+        dbg("PING %lu to %s: Error %d\n", s->seq, host, s->err);
+        exit(1);
+    }
 }
 
+void udp(pico_time now, void *arg)
+{
+    struct pico_msginfo info = {.dev = dev, .ttl = 1, .tos = 0};
+    union pico_address dst;
+    struct pico_socket *s;
+    char buf[100] = {0xaa};
+    int ret;
+    
+    pico_string_to_ipv6((char *)arg, dst.ip6.addr);
+    
+    s = pico_socket_open(PICO_PROTO_IPV6, PICO_PROTO_UDP, cb);
+    ret = pico_socket_sendto_extended(s, buf, 70, &dst, short_be(0xF055), &info);
+    printf("Sending too large UDP packet: %d (%s)\n", ret, strerror(pico_err));
+    pico_socket_close(s);
+    
+    pico_timer_add(1000, udp, arg);
+}
+
+
 int main(int argc, const char *argv[]) {
+    union pico_address dest;
+    struct pico_ip6 prefix;
 	radio_t *radio;
 	
     /* Geomess parameters */
     uint16_t id = 0, pan_identifier = 0, i = 0;
     uint32_t x = 0, y = 0, range_max = 0, range_good = 0;
     uint8_t pan_channel = 0;
+    uint8_t size = 0;
     
     /* Too much arguments given? */
-    if (argc > 8 || argc < 8)
+    if (argc < 8)
         exit(1);
+    
+    pico_string_to_ipv6("aaaa:0000:0000:0000:0000:0000:0000:0000", prefix.addr);
     
     /* Parse in command-line variables */
     id = (uint8_t)atoi(argv[1]);
@@ -59,32 +83,38 @@ int main(int argc, const char *argv[]) {
     y = (uint32_t)atoi(argv[5]);
     range_max = (uint32_t)atoi(argv[6]);
     range_good = (uint32_t)atoi(argv[7]);
+    if (argc == 10)
+        size = (uint8_t)atoi(argv[9]);
     
     /* Initialise picoTCP */
     pico_stack_init();
     
     /* Create the 802.15.4-radio instance */
-	if (!(radio = radio_create(id,
-							   pan_identifier,
-							   pan_channel,
-							   x,
-							   y,
-							   range_max,
-							   range_good)))
-	{
+	if (!(radio = radio_create(id, pan_identifier, pan_channel, x, y, range_max, range_good))) {
 		printf("Could not create radio_t-instance, bailing out..\n");
 		exit(1);
-	}
-	
-	/* Check if this is the first node */
-	if (0 == id) {
-		first_node = 1;
 	}
 	
     /* Create the sixlowpan-device and register it in picoTCP */
     dev = pico_sixlowpan_create(radio);
     
-    pico_timer_add(1000, ping, NULL);
+    /* Set the routable prefix of the PAN */
+    pico_sixlowpan_set_prefix(dev, prefix);
+    
+    /* Check if this is the first node */
+    if (0 == id) {
+        first_node = 1;
+        
+        /* Enable IPv6 routing on the device */
+        //pico_ipv6_dev_routing_enable(dev);
+        
+        /* Start pinging the remote host */
+        if (argv >= 9)
+            pico_icmp6_ping(argv[8], NUM_PING, 1000, NUM_PING * 1000, size, ping, dev);
+    } else {
+        if (argc >= 9)
+            pico_timer_add(1000, udp, argv[8]);
+    }
 	
     /* Endless loop */
     for EVER {
