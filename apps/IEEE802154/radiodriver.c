@@ -110,9 +110,13 @@ static int radio_transmit(radio_t *radio, void *buf, int len)
     
     memcpy(buf + len - 2, (void *)&crc, 2);
     
-    /* Send the payload over this radio's geomesh-connection */
     /* buf + 1 to skip the length-byte, len - 1 to don't cause overflow */
-    return geomess_send(gm_radio->conn, buf + 1, (uint32_t)len - 1);
+    if ((ret = geomess_send(gm_radio->conn, buf + 1, (uint32_t)len - 1)) > 0) {
+        /* Do nothing, frame is sent */
+    }
+    
+    /* Send the payload over this radio's geomesh-connection */
+    return ret;
 }
 
 /**
