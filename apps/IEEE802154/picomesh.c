@@ -109,7 +109,7 @@ int main(int argc, const char *argv[]) {
         //pico_ipv6_dev_routing_enable(dev);
         
         /* Start pinging the remote host */
-        if (argv >= 9)
+        if (argc >= 9)
             pico_icmp6_ping(argv[8], NUM_PING, 1000, NUM_PING * 1000, size, ping, dev);
     } else {
         if (argc >= 9)

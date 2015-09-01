@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <string.h>
-#include "libevquick.h"
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <stdlib.h>
@@ -9,6 +8,7 @@
 #include <errno.h>
 #include <math.h>
 
+#include "libevquick.h"
 #include "geomess.h"
 
 struct geomess_node {
