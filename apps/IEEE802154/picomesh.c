@@ -59,14 +59,12 @@ void udp(pico_time now, void *arg)
 
 
 int main(int argc, const char *argv[]) {
-    union pico_address dest;
     struct pico_ip6 prefix;
-	radio_t *radio;
+	struct ieee_radio *radio;
 	
     /* Geomess parameters */
-    uint16_t id = 0, pan_identifier = 0, i = 0;
+    uint16_t id = 0, pan_id = 0, i = 0;
     uint32_t x = 0, y = 0, range_max = 0, range_good = 0;
-    uint8_t pan_channel = 0;
     uint8_t size = 0;
     
     /* Too much arguments given? */
@@ -77,20 +75,19 @@ int main(int argc, const char *argv[]) {
     
     /* Parse in command-line variables */
     id = (uint8_t)atoi(argv[1]);
-	pan_identifier = (uint16_t)atoi(argv[2]);
-	pan_channel = (uint8_t)atoi(argv[3]);
-    x = (uint32_t)atoi(argv[4]);
-    y = (uint32_t)atoi(argv[5]);
-    range_max = (uint32_t)atoi(argv[6]);
-    range_good = (uint32_t)atoi(argv[7]);
-    if (argc == 10)
-        size = (uint8_t)atoi(argv[9]);
+	pan_id = (uint16_t)atoi(argv[2]);
+    x = (uint32_t)atoi(argv[3]);
+    y = (uint32_t)atoi(argv[4]);
+    range_max = (uint32_t)atoi(argv[5]);
+    range_good = (uint32_t)atoi(argv[6]);
+    if (argc == 9)
+        size = (uint8_t)atoi(argv[8]);
     
     /* Initialise picoTCP */
     pico_stack_init();
     
     /* Create the 802.15.4-radio instance */
-	if (!(radio = radio_create(id, pan_identifier, pan_channel, x, y, range_max, range_good))) {
+	if (!(radio = radio_create(id, pan_id, x, y, range_max, range_good))) {
 		printf("Could not create radio_t-instance, bailing out..\n");
 		exit(1);
 	}
@@ -109,11 +106,11 @@ int main(int argc, const char *argv[]) {
         //pico_ipv6_dev_routing_enable(dev);
         
         /* Start pinging the remote host */
-        if (argc >= 9)
-            pico_icmp6_ping(argv[8], NUM_PING, 1000, NUM_PING * 1000, size, ping, dev);
+        if (argc >= 8)
+            pico_icmp6_ping(argv[7], NUM_PING, 1000, NUM_PING * 1000, size, ping, dev);
     } else {
-        if (argc >= 9)
-            pico_timer_add(1000, udp, argv[8]);
+        if (argc >= 8)
+            pico_timer_add(1000, udp, argv[7]);
     }
 	
     /* Endless loop */

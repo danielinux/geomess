@@ -18,8 +18,6 @@
  *                        6LoWPAN-node.
  *  @param pan_identifier uint16_t, identification number of the PAN to
  *                        to set up or to join.
- *  @param pan_channel    uint8_t, 11-26, channel the PAN is you want
- *                        to set up or join is currently operating on.
  *  @param x              uint32_t, geographical X-coördinate of the radio
  *  @param y              uint32_t, geographical Y-coördinate of the radio
  *  @param range_max      uint32_t, maximum radio-range
@@ -28,12 +26,6 @@
  *
  *  @return radio_t *, radio-driver instance you can pass to 6LoWPAN.
  */
-radio_t *radio_create(uint16_t	id,
-					  uint16_t	pan_identifier,
-					  uint8_t	pan_channel,
-					  uint32_t	x,
-					  uint32_t	y,
-					  uint32_t	range_max,
-					  uint32_t  range_good);
+struct ieee_radio *radio_create(uint16_t id, uint16_t pan_identifier, uint32_t x, uint32_t y, uint32_t range_max, uint32_t range_good);
 
 #endif /* INCLUDE_DEVICE_DRIVER */
