@@ -118,7 +118,7 @@ static int radio_transmit(struct ieee_radio *radio, void *buf, int len)
     memcpy(buf + len - 2, (void *)&crc, 2);
     
     /* buf + 1 to skip the length-byte, len - 1 to don't cause overflow */
-    if ((ret = geomess_send(gm->conn, buf + 1, (uint32_t)len - 1)) > 0) {
+    if ((ret = geomess_send(gm->conn, buf + 1, (uint32_t)(len - 1))) > 0) {
         /* Do nothing, frame is sent */
     }
     
@@ -137,16 +137,34 @@ static int radio_transmit(struct ieee_radio *radio, void *buf, int len)
  *  @return 1 when the frame is indeed filtered and didn't pass through, 0 when
  *          the frame is not filtered and can be send on to the higher layer.
  */
-static int radio_filter_frame(uint8_t buf[IEEE_MAC_MTU], uint8_t len)
+static int radio_filter_frame(struct ieee_radio *radio, uint8_t buf[IEEE_MAC_MTU], uint8_t len)
 {
+    struct gm_radio *gm = (struct gm_radio *)radio;
     struct ieee_hdr *hdr = (struct ieee_hdr *)buf;
+    struct pico_ieee_addr addr;
     
+    /* Parse in the destination address */
+    addr = pico_ieee_addr_from_hdr(hdr, 0);
     
-    /* First check the destination PAN-ID */
+    /* But first, check the destination PAN-ID */
+    if (hdr->pan == gm->pan_identifier) {
+        /* If the PAN-ID matches, check for broadcast */
+        if (IEEE_AM_SHORT == addr._mode && (0xFFFF == addr._short.addr || addr._short.addr == gm->address_short)) {
+            /* Pass broadcast frame as well as frame for which the destination address is the same as this device's short */
+            return 0;
+        } else if (IEEE_AM_EXTENDED == addr._mode && (0 == memcmp(addr._ext.addr, gm->address_extended, PICO_SIZE_IEEE_EXT))) {
+            /* Pass frame for which the extended destination address matches this device's extended address */
+            return 0;
+        } else {
+            /* None of the addresses matches this device's addresses and the frame isn't broadcast, do nothing */
+        }
+    } else {
+        /* PAN-ID doesn't match, do nothing */
+    }
     
-    
-    
-    return 0;
+    /* Filter and bail out */
+    memset(buf, 0, IEEE_MAC_MTU);
+    return 1;
 }
 
 /**
@@ -179,10 +197,12 @@ static enum radio_rcode radio_receive(struct ieee_radio *radio, uint8_t buf[IEEE
         return RADIO_ERR_ERX;
     
     buf[0] = (uint8_t)ret;
-    
     if (ret > 0) {
         /* Let the packet pass through the address-filter */
-        //radio_filter_frame(buf + 1, ret - 2);
+        if (radio_filter_frame(radio, buf + 1, ret - 2)) {
+            /* If the frame is filtered make sure the length returned is zero */
+            memset(buf, 0, IEEE_PHY_MTU);
+        }
     }
     
 	/* If a file-descriptor is selected, retrieve data from it */
@@ -252,7 +272,6 @@ static uint16_t radio_pan_id(struct ieee_radio *radio)
 {
     /* Parse the generic radio structure to the internal Geomess radio-structure */
     struct gm_radio *gm = (struct gm_radio *)radio;
-    
     return gm->pan_identifier;
 }
 
@@ -297,13 +316,17 @@ static void gen_addr_ext(uint8_t buf[8])
 struct ieee_radio *radio_create(uint16_t id, uint16_t pan_identifier, uint32_t x, uint32_t y, uint32_t range_max, uint32_t range_good)
 {
 	/* Create the radio-instance */
-	struct gm_radio *gm = (struct gm_radio *)malloc(sizeof(struct gm_radio));
-	if (!gm)
+	struct gm_radio *gm = (struct gm_radio *)PICO_ZALLOC(sizeof(struct gm_radio));
+    if (!gm) {
+        IEEE_DBG("ERROR: Could not allocate Geomess radio-instance\n");
 		return NULL;
+    }
 	
 	/* Try to make a connection with the geomess-network */
-    if (!(gm->conn = geomess_open(id, x, y, range_max, range_good)))
-		return NULL;
+    if (!(gm->conn = geomess_open(id, x, y, range_max, range_good))) {
+        IEEE_DBG("ERROR: Could not open geomess connection\n");
+        return NULL;
+    }
 	
 	/* Set the callbacks of this radio-instance */
     gm->radio.transmit = radio_transmit;
