@@ -24,7 +24,7 @@
 #endif
 
 #define CHECK_PARAM(a, b)   if(!(a)){ \
-                                dbg("[RADIODRIVER]$ %s %d", __FUNCTION__, (b)); \
+                                dbg("[RADIODRIVER]$ %s %d\n", __FUNCTION__, (b)); \
                                 return RADIO_ERR_EINVAL; \
                             }(void)a
 
