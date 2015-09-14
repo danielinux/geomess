@@ -3,7 +3,7 @@
 #include "geomess.h"
 #include <stdlib.h>
 
-static char errbuf[PCAP_ERRBUF_SIZE];
+//static char errbuf[PCAP_ERRBUF_SIZE];
 
 pcap_t *pcap_create(const char *source, char *errbuf);
 

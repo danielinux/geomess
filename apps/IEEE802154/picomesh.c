@@ -107,10 +107,10 @@ int main(int argc, const char *argv[]) {
         
         /* Start pinging the remote host */
         if (argc >= 8)
-            pico_icmp6_ping(argv[7], NUM_PING, 1000, NUM_PING * 1000, size, ping, dev);
+            pico_icmp6_ping((void *)argv[7], NUM_PING, 1000, NUM_PING * 1000, size, ping, dev);
     } else {
         if (argc >= 8)
-            pico_timer_add(1000, udp, argv[7]);
+            pico_timer_add(1000, udp, (void *)argv[7]);
     }
 	
     /* Endless loop */

@@ -99,7 +99,10 @@ void login(struct geomess_node *from, struct geomess_msg *msg)
     from->range_good = (double)ntohl(msg->info.login.range_good);
     if (fd >= 0) {
         char line[1000];
-        snprintf(line, 1000, "%lu,%lu,%lu,%lu\n", from->x, from->y, from->range_max,from->range_good);
+        snprintf(line, 1000, "%lu,%lu,%lu,%lu\n", (long unsigned int)from->x,
+                                                  (long unsigned int)from->y,
+                                                  (long unsigned int)from->range_max,
+                                                  (long unsigned int)from->range_good);
         (void)write(fd, line, strlen(line));
         close(fd);
     }
@@ -171,7 +174,7 @@ void read_cb(int fd, short int revents, void *_node)
 	char cmd[MAXLEN];
 	int r;
 	
-	r = read(fd, cmd, MAXLEN);
+	r = read(fd, cmd, (size_t)MAXLEN);
 	if (r > 0) {
 		cmd[r] = (char) 0;
 		parse_cmd(node, cmd);
