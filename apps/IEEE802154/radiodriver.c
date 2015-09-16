@@ -337,7 +337,7 @@ struct ieee_radio *radio_create(uint16_t id, uint16_t pan_identifier, uint32_t x
     gm->radio.set_addr_short = radio_addr_short_set;
 	
 	/* Set the short-ID by command-line options */
-	gm->address_short = id;
+	gm->address_short = 0xFFFF;
 	
 	/* Generate a random EUI64-address */
 	gen_addr_ext(gm->address_extended);

@@ -92,26 +92,27 @@ int main(int argc, const char *argv[]) {
 		exit(1);
 	}
 	
-    /* Create the sixlowpan-device and register it in picoTCP */
-    dev = pico_sixlowpan_create(radio);
-    
-    /* Set the routable prefix of the PAN */
-    pico_sixlowpan_set_prefix(dev, prefix);
-    
     /* Check if this is the first node */
     if (0 == id) {
         first_node = 1;
         
-        /* Enable IPv6 routing on the device */
-        //pico_ipv6_dev_routing_enable(dev);
+        /* Create a 6LBR and register it in picoTCP */
+        dev = pico_sixlowpan_create(radio, SIXLOWPAN_6LBR);
         
         /* Start pinging the remote host */
         if (argc >= 8)
             pico_icmp6_ping((void *)argv[7], NUM_PING, 1000, NUM_PING * 1000, size, ping, dev);
     } else {
+        /* Create a 6LN and register it in picoTCP */
+        dev = pico_sixlowpan_create(radio, SIXLOWPAN_6LN);
+        
+        /* Start sending garbage packets over UDP */
         if (argc >= 8)
             pico_timer_add(1000, udp, (void *)argv[7]);
     }
+    
+    /* Set the routable prefix of the PAN */
+//    pico_sixlowpan_set_prefix(dev, prefix);
 	
     /* Endless loop */
     for EVER {
