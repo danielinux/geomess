@@ -325,6 +325,7 @@ struct ieee_radio *radio_create(uint16_t id, uint16_t pan_identifier, uint32_t x
 	/* Try to make a connection with the geomess-network */
     if (!(gm->conn = geomess_open(id, x, y, range_max, range_good))) {
         IEEE_DBG("ERROR: Could not open geomess connection\n");
+        PICO_FREE(gm);
         return NULL;
     }
 	
@@ -337,7 +338,7 @@ struct ieee_radio *radio_create(uint16_t id, uint16_t pan_identifier, uint32_t x
     gm->radio.set_addr_short = radio_addr_short_set;
 	
 	/* Set the short-ID by command-line options */
-	gm->address_short = 0xFFFF;
+	gm->address_short = id;
 	
 	/* Generate a random EUI64-address */
 	gen_addr_ext(gm->address_extended);

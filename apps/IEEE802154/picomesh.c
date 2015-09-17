@@ -112,7 +112,7 @@ int main(int argc, const char *argv[]) {
     }
     
     /* Set the routable prefix of the PAN */
-//    pico_sixlowpan_set_prefix(dev, prefix);
+    pico_sixlowpan_set_prefix(dev, prefix);
 	
     /* Endless loop */
     for EVER {
