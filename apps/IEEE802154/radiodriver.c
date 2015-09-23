@@ -276,18 +276,17 @@ static uint16_t radio_pan_id(struct ieee_radio *radio)
 }
 
 /* Based on picoapp MAC-generation */
-static void gen_addr_ext(uint8_t buf[8])
+static void gen_addr_ext(uint16_t suffix, uint8_t buf[8])
 {
-    unsigned char macaddr[6] = { 0, 0, 0, 0xa, 0xb, 0x0 };
+//    unsigned char macaddr[6] = { 0, 0, 0, 0xa, 0xb, 0x0 };
     unsigned char enc[2] = { 0xAA, 0xAB };
-    uint16_t *macaddr_low = (uint16_t *) (macaddr + 2);
-    *macaddr_low = (uint16_t)(*macaddr_low ^ (uint16_t)((uint16_t)getpid() & (uint16_t)0xFFFFU));
+//    uint16_t *macaddr_low = (uint16_t *) (macaddr + 2);
+//    *macaddr_low = (uint16_t)(*macaddr_low ^ (uint16_t)((uint16_t)getpid() & (uint16_t)0xFFFFU));
     
-    memcpy(buf, macaddr, 3);
+//    memcpy(buf, macaddr, 3);
     memcpy((buf + 3), enc, 2);
-    memcpy((buf + 5), (macaddr + 3), 3);
-    
-    buf[0] = buf[0] ^ 0x02;
+    buf[7] = (uint8_t)suffix;
+//    memcpy((buf + 5), (macaddr + 3), 3);
 }
 
 /**
@@ -339,9 +338,10 @@ struct ieee_radio *radio_create(uint16_t id, uint16_t pan_identifier, uint32_t x
 	
 	/* Set the short-ID by command-line options */
 	gm->address_short = id;
+//    gm->address_short = IEEE_ADDR_BCAST_SHORT;
 	
 	/* Generate a random EUI64-address */
-	gen_addr_ext(gm->address_extended);
+	gen_addr_ext(id, gm->address_extended);
 	
 	/* Set the 802.15.4 specific parameters */
 	gm->pan_identifier = pan_identifier;

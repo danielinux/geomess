@@ -45,12 +45,12 @@ void udp(pico_time now, void *arg)
     union pico_address dst;
     struct pico_socket *s;
     char buf[100] = {0xaa};
-    int ret;
+    int ret = 0;
     
     pico_string_to_ipv6((char *)arg, dst.ip6.addr);
     
     s = pico_socket_open(PICO_PROTO_IPV6, PICO_PROTO_UDP, cb);
-    ret = pico_socket_sendto_extended(s, buf, 70, &dst, short_be(0xF055), &info);
+    ret = pico_socket_sendto(s, buf, 70, &dst, short_be(0xF055));
     printf("Sending too large UDP packet: %d (%s)\n", ret, strerror(pico_err));
     pico_socket_close(s);
     
@@ -59,7 +59,7 @@ void udp(pico_time now, void *arg)
 
 
 int main(int argc, const char *argv[]) {
-    struct pico_ip6 prefix;
+    struct pico_ip6 prefix = {{0}}, zero = {{0}}, gw = {{0}}, nm = {{0}};
 	struct ieee_radio *radio;
 	
     /* Geomess parameters */
@@ -71,7 +71,8 @@ int main(int argc, const char *argv[]) {
     if (argc < 8)
         exit(1);
     
-    pico_string_to_ipv6("aaaa:0000:0000:0000:0000:0000:0000:0000", prefix.addr);
+    pico_string_to_ipv6("2aaa:0000:0000:0000:0000:0000:0000:0000", prefix.addr);
+    pico_string_to_ipv6("2aaa:0000:0000:0000:0000:00ff:fe00:0000", gw.addr);
     
     /* Parse in command-line variables */
     id = (uint8_t)atoi(argv[1]);
@@ -92,28 +93,38 @@ int main(int argc, const char *argv[]) {
 		exit(1);
 	}
 	
+    /* Create a 6LoWPAN-device and register it in picoTCP */
+    dev = pico_sixlowpan_create(radio);
+    
     /* Check if this is the first node */
     if (0 == id) {
         first_node = 1;
         
-        /* Create a 6LBR and register it in picoTCP */
-        dev = pico_sixlowpan_create(radio, SIXLOWPAN_6LBR);
-        
+        if (pico_sixlowpan_enable_6lbr(dev, prefix)) {
+            printf("[PICOMESH]$ ERROR: Failed enabling 6LBR-mode on interface (%s)\n", dev->name);
+        }
+
         /* Start pinging the remote host */
-        if (argc >= 8)
-            pico_icmp6_ping((void *)argv[7], NUM_PING, 1000, NUM_PING * 1000, size, ping, dev);
+//        if (argc >= 8)
+//            pico_icmp6_ping((void *)argv[7], NUM_PING, 1000, NUM_PING * 1000, size, ping, dev);
     } else {
-        /* Create a 6LN and register it in picoTCP */
-        dev = pico_sixlowpan_create(radio, SIXLOWPAN_6LN);
         
-        /* Start sending garbage packets over UDP */
-        if (argc >= 8)
-            pico_timer_add(1000, udp, (void *)argv[7]);
+        /* Set the routable prefix of the PAN */
+//        pico_sixlowpan_set_prefix(dev, prefix);
+//        
+//        /* Add default route */
+//        if (pico_ipv6_route_add(zero, zero, gw, 1, NULL)) {
+//            printf("[PICOMESH]$ ERROR: Could not set default gateway pico_err: (%s)\n", strerror(pico_err));
+//        } else {
+//            printf("[PICOMESH]$ NOTE: Default gateway successfully set\n");
+//        }
+//        
+//        /* Start sending garbage packets over UDP */
+//        if (argc >= 8)
+//            pico_timer_add(1000, udp, (void *)argv[7]);
     }
     
-    /* Set the routable prefix of the PAN */
-    pico_sixlowpan_set_prefix(dev, prefix);
-	
+    
     /* Endless loop */
     for EVER {
         pico_stack_tick();
