@@ -105,23 +105,12 @@ int main(int argc, const char *argv[]) {
         }
 
         /* Start pinging the remote host */
-//        if (argc >= 8)
-//            pico_icmp6_ping((void *)argv[7], NUM_PING, 1000, NUM_PING * 1000, size, ping, dev);
+        if (argc >= 8)
+            pico_icmp6_ping((void *)argv[7], NUM_PING, 1000, NUM_PING * 1000, size, ping, dev);
     } else {
-        
-        /* Set the routable prefix of the PAN */
-//        pico_sixlowpan_set_prefix(dev, prefix);
-//        
-//        /* Add default route */
-//        if (pico_ipv6_route_add(zero, zero, gw, 1, NULL)) {
-//            printf("[PICOMESH]$ ERROR: Could not set default gateway pico_err: (%s)\n", strerror(pico_err));
-//        } else {
-//            printf("[PICOMESH]$ NOTE: Default gateway successfully set\n");
-//        }
-//        
-//        /* Start sending garbage packets over UDP */
-//        if (argc >= 8)
-//            pico_timer_add(1000, udp, (void *)argv[7]);
+        /* Start sending garbage packets over UDP */
+        if (argc >= 8)
+            pico_timer_add(1000, udp, (void *)argv[7]);
     }
     
     
