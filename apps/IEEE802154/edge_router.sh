@@ -1,13 +1,13 @@
 #!/bin/bash
 
-if [ $# == 2 ]; then
+if [ $# == 3 ]; then
     if [ "$1" == DEBUG ]; then
-        gdb --args ./picomesh 0 10 0 0 5 5 fe80::ff:fe00:2 $2
+        gdb --args ./picomesh 0 10 0 0 5 5 $2 $3
     elif [ "$1" == VALGRIND ]; then
-        valgrind --leak-check=yes ./picomesh 0 10 0 0 5 5 fe80::ff:fe00:3 $2
+        valgrind --leak-check=yes ./picomesh 0 10 0 0 5 5 $2 $3
     else
         echo "Usage: ./edge_router.sh <DEBUG/VALGRIND> [size]"
     fi
 else
-        ./picomesh 0 10 0 0 5 5 fe80::ff:fe00:2 $1
+    ./picomesh 0 10 0 0 5 5 $1 $2
 fi 
