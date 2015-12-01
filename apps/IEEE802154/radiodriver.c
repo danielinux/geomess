@@ -23,10 +23,6 @@
 #define RADIO_DBG do {} while (0);
 #endif
 
-#define CHECK_PARAM(a, b)   if(!(a)){ \
-                                dbg("[RADIODRIVER]$ %s %d\n", __FUNCTION__, (b)); \
-                                return RADIO_ERR_EINVAL; \
-                            }(void)a
 
 /**
  *  Geomess specific radio-instance definition
@@ -106,8 +102,11 @@ static int radio_transmit(struct ieee_radio *radio, void *buf, int len)
     uint16_t crc = 0;
     size_t ret = 0;
     
-    CHECK_PARAM(radio, __LINE__);
-    CHECK_PARAM(buf, __LINE__);
+    if (!radio || !buf) {
+        pico_err = PICO_ERR_EINVAL;
+        return -1;
+    }
+
 
 	/* Parse the generic radio structure to the internal Geomess radio-structure */
     gm = (struct gm_radio *)radio;
@@ -137,7 +136,7 @@ static int radio_transmit(struct ieee_radio *radio, void *buf, int len)
  *  @return 1 when the frame is indeed filtered and didn't pass through, 0 when
  *          the frame is not filtered and can be send on to the higher layer.
  */
-static int radio_filter_frame(struct ieee_radio *radio, uint8_t buf[IEEE_MAC_MTU], uint8_t len)
+static int radio_filter_frame(struct ieee_radio *radio, uint8_t *buf, uint8_t len)
 {
     struct gm_radio *gm = (struct gm_radio *)radio;
     struct ieee_hdr *hdr = (struct ieee_hdr *)buf;
@@ -175,7 +174,7 @@ static int radio_filter_frame(struct ieee_radio *radio, uint8_t buf[IEEE_MAC_MTU
  *
  *  @return
  */
-static enum radio_rcode radio_receive(struct ieee_radio *radio, uint8_t buf[IEEE_PHY_MTU])
+static int radio_receive(struct ieee_radio *radio, uint8_t *buf, int len)
 {
 	/* Parse the generic radio structure to the internal Geomess radio-structure */
 	struct gm_radio *gm = (struct gm_radio *)radio;
@@ -193,8 +192,9 @@ static enum radio_rcode radio_receive(struct ieee_radio *radio, uint8_t buf[IEEE
 		return -1;
     
     /* 6LoWPAN excepts a 128-byte buffer with len + payload + fcs */
-    if ((ret = geomess_recv(gm->conn, buf + 1, IEEE_PHY_MTU - 1)) < 0)
-        return RADIO_ERR_ERX;
+    ret = geomess_recv(gm->conn, buf + 1, IEEE_PHY_MTU - 1);
+    if (ret < 0)
+        return -1;
     
     buf[0] = (uint8_t)ret;
     if (ret > 0) {
@@ -206,7 +206,7 @@ static enum radio_rcode radio_receive(struct ieee_radio *radio, uint8_t buf[IEEE
     }
     
 	/* If a file-descriptor is selected, retrieve data from it */
-	return RADIO_ERR_NOERR;
+	return buf[0];
 }
 
 /**
@@ -217,7 +217,7 @@ static enum radio_rcode radio_receive(struct ieee_radio *radio, uint8_t buf[IEEE
  *
  *  @return radio_rcode_t, see "pico_sixlowpan_dev.h"
  */
-static enum radio_rcode radio_addr_ext(struct ieee_radio *radio, uint8_t buf[8])
+static int radio_addr_ext(struct ieee_radio *radio, uint8_t *buf)
 {
 	/* Parse the generic radio structure to the internal Geomess radio-structure */
 	struct gm_radio *gm = (struct gm_radio *)radio;
@@ -250,7 +250,7 @@ static uint16_t radio_addr_short(struct ieee_radio *radio)
  *
  *  @return radio_rcode_t, see "pico_sixlowpan_dev.h"
  */
-static enum radio_rcode radio_addr_short_set(struct ieee_radio *radio, uint16_t short_16)
+static int radio_addr_short_set(struct ieee_radio *radio, uint16_t short_16)
 {
     /* Parse the generic radio structure to the internal Geomess radio-structure */
     struct gm_radio *gm = (struct gm_radio *)radio;
@@ -258,7 +258,7 @@ static enum radio_rcode radio_addr_short_set(struct ieee_radio *radio, uint16_t 
     /* Just set the short address */
     gm->address_short = short_16;
     
-    return RADIO_ERR_NOERR;
+    return 0;
 }
 
 /**
@@ -276,7 +276,7 @@ static uint16_t radio_pan_id(struct ieee_radio *radio)
 }
 
 /* Based on picoapp MAC-generation */
-static void gen_addr_ext(uint16_t suffix, uint8_t buf[8])
+static void gen_addr_ext(uint16_t suffix, uint8_t *buf)
 {
 //    unsigned char macaddr[6] = { 0, 0, 0, 0xa, 0xb, 0x0 };
     unsigned char enc[2] = { 0xAA, 0xAB };
