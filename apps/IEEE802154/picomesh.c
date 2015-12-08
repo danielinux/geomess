@@ -107,8 +107,7 @@ int main(int argc, const char *argv[]) {
 
         /* Start pinging the remote host */
         if (argc >= 8) {
-            if (pico_icmp6_ping(argv[7], NUM_PING * 10, 1000, NUM_PING * 10000, size, ping, dev))
-                printf("Could not start ping-requests, due to %s\n", strerror(pico_err));
+            pico_icmp6_ping(argv[7], NUM_PING, 1000, 10000, size, ping, dev)
         }
     } else {
         /* Start sending garbage packets over UDP */
