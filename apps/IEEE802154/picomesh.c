@@ -107,7 +107,7 @@ int main(int argc, const char *argv[]) {
 
         /* Start pinging the remote host */
         if (argc >= 8) {
-            pico_icmp6_ping(argv[7], NUM_PING, 1000, 10000, size, ping, dev)
+            pico_icmp6_ping(argv[7], NUM_PING, 1000, 10000, size, ping, dev);
         }
     } else {
         /* Start sending garbage packets over UDP */
