@@ -1,0 +1,2 @@
+#!/bin/bash
+ssh parallels@parallels 'cd ~/sixlowpan/geomess/lib/picotcp; make clean; make units ARCH=faulty GCOV=1 test; ~/sixlowpan/geomess/lib/picotcp/build/test/modunit_dev_sixlowpan.elf'
