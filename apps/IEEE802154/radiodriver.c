@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>       
+#include <unistd.h>
 
 #include <sys/types.h>
 #include <sys/poll.h>
@@ -23,6 +23,7 @@
 #define RADIO_DBG do {} while (0);
 #endif
 
+//#define P_LOSS 3
 
 /**
  *  Geomess specific radio-instance definition
@@ -30,12 +31,12 @@
 struct gm_radio
 {
 	struct ieee_radio radio;
-	
+
 	/**
 	 *  PHY: Geomess-connection
 	 */
 	GEOMESS conn;
-	
+
 	/**
 	 *  LIB: LoWPAN Information Base:
 	 *	--------------------------------
@@ -43,15 +44,15 @@ struct gm_radio
 	 *	PSI: Pan Specific Information
 	 */
 	uint16_t	pan_identifier;
-	
+
 	/**
 	 *  DSI: Device Specific Information
 	 */
 	uint8_t		address_extended[8];
 	uint16_t	address_short;
-	
+
 	/**
-	 *  16-bit address pool to hand out short 
+	 *  16-bit address pool to hand out short
 	 *	addresses from.
      *
      *  NOTE:
@@ -75,7 +76,7 @@ static uint16_t calculate_crc16(uint8_t *buf, uint8_t len)
     uint16_t crc = 0x0000;
     uint16_t q = 0, i = 0;
     uint8_t c = 0;
-    
+
     for (i = 0; i < len; i++) {
         c = buf[i];
         q = (crc ^ c) & 0x0F;
@@ -83,7 +84,7 @@ static uint16_t calculate_crc16(uint8_t *buf, uint8_t len)
         q = (crc ^ (c >> 4)) & 0xF;
         crc = (crc >> 4) ^ (q * 0x1081);
     }
-    
+
     return crc;
 }
 
@@ -101,28 +102,37 @@ static int radio_transmit(struct ieee_radio *radio, void *buf, int len)
     struct gm_radio *gm = NULL;
     uint16_t crc = 0;
     size_t ret = 0;
-    
+
     if (!radio || !buf) {
         pico_err = PICO_ERR_EINVAL;
         return -1;
     }
 
+#ifdef P_LOSS
+    long n = lrand48();
+    n = n % 100;
+    if (n < P_LOSS) {
+        printf("Was not ready for TRANSMIT!\n");
+        return 0;
+    }
+#endif
 
 	/* Parse the generic radio structure to the internal Geomess radio-structure */
     gm = (struct gm_radio *)radio;
-    
+
     /* Calculate the FCS */
     crc = calculate_crc16(buf + 1, len - 3); /* buf + 1 to skip the length-byte */
-    
+
     memcpy(buf + len - 2, (void *)&crc, 2);
-    
+
     /* buf + 1 to skip the length-byte, len - 1 to don't cause overflow */
     if ((ret = geomess_send(gm->conn, buf + 1, (uint32_t)(len - 1))) > 0) {
         /* Do nothing, frame is sent */
+        return len;
     }
-    
+
     /* Send the payload over this radio's geomesh-connection */
-    return ret;
+    return 0;
 }
 
 /**
@@ -141,10 +151,10 @@ static int radio_filter_frame(struct ieee_radio *radio, uint8_t *buf, uint8_t le
     struct gm_radio *gm = (struct gm_radio *)radio;
     struct ieee_hdr *hdr = (struct ieee_hdr *)buf;
     struct pico_ieee_addr addr;
-    
+
     /* Parse in the destination address */
     addr = pico_ieee_addr_from_hdr(hdr, 0);
-    
+
     /* But first, check the destination PAN-ID */
     if (hdr->pan == gm->pan_identifier) {
         /* If the PAN-ID matches, check for broadcast */
@@ -160,7 +170,7 @@ static int radio_filter_frame(struct ieee_radio *radio, uint8_t *buf, uint8_t le
     } else {
         /* PAN-ID doesn't match, do nothing */
     }
-    
+
     /* Filter and bail out */
     memset(buf, 0, IEEE_MAC_MTU);
     return 1;
@@ -180,22 +190,22 @@ static int radio_receive(struct ieee_radio *radio, uint8_t *buf, int len)
 	struct gm_radio *gm = (struct gm_radio *)radio;
 	struct pollfd pfd;
     int ret = 0;
-	
+
 	/* Get the file-descriptor of this device's connection to the Geomesh-network */
 	pfd.fd = geomess_datafd(gm->conn);
-	
+
 	/* Set the events to poll */
 	pfd.events = POLLIN;
-	
+
 	/* Poll the file-descriptors, and return if nothing is selected */
 	if (poll(&pfd, 1, 0) <= 0)
 		return -1;
-    
+
     /* 6LoWPAN excepts a 128-byte buffer with len + payload + fcs */
     ret = geomess_recv(gm->conn, buf + 1, IEEE_PHY_MTU - 1);
     if (ret < 0)
         return -1;
-    
+
     buf[0] = (uint8_t)ret;
     if (ret > 0) {
         /* Let the packet pass through the address-filter */
@@ -204,7 +214,7 @@ static int radio_receive(struct ieee_radio *radio, uint8_t *buf, int len)
             memset(buf, 0, IEEE_PHY_MTU);
         }
     }
-    
+
 	/* If a file-descriptor is selected, retrieve data from it */
 	return buf[0];
 }
@@ -223,7 +233,7 @@ static int radio_addr_ext(struct ieee_radio *radio, uint8_t *buf)
 	struct gm_radio *gm = (struct gm_radio *)radio;
 
 	memcpy(buf, gm->address_extended, 8);
-	
+
 	return 0;
 }
 
@@ -238,7 +248,7 @@ static uint16_t radio_addr_short(struct ieee_radio *radio)
 {
     /* Parse the generic radio structure to the internal Geomess radio-structure */
     struct gm_radio *gm = (struct gm_radio *)radio;
-    
+
     return gm->address_short;
 }
 
@@ -254,10 +264,10 @@ static int radio_addr_short_set(struct ieee_radio *radio, uint16_t short_16)
 {
     /* Parse the generic radio structure to the internal Geomess radio-structure */
     struct gm_radio *gm = (struct gm_radio *)radio;
-    
+
     /* Just set the short address */
     gm->address_short = short_16;
-    
+
     return 0;
 }
 
@@ -282,7 +292,7 @@ static void gen_addr_ext(uint16_t suffix, uint8_t *buf)
     unsigned char enc[2] = { 0xAA, 0xAB };
 //    uint16_t *macaddr_low = (uint16_t *) (macaddr + 2);
 //    *macaddr_low = (uint16_t)(*macaddr_low ^ (uint16_t)((uint16_t)getpid() & (uint16_t)0xFFFFU));
-    
+
 //    memcpy(buf, macaddr, 3);
     memcpy((buf + 3), enc, 2);
     buf[7] = (uint8_t)suffix;
@@ -293,13 +303,13 @@ static void gen_addr_ext(uint16_t suffix, uint8_t *buf)
  *  Creates a radio-driver instance to pass to the 6LoWPAN layer.
  *  In this specific case this will create a gm_radio_t and set up
  *  a connection with the Geomess-network. The gm_radio_t will get
- *  casted to a proper radio_t * that you can give to the 6LoWPAN 
+ *  casted to a proper radio_t * that you can give to the 6LoWPAN
  *  adaption layer.
  *
  *  [TODO]: Simulate IEEE802.15.4 network commissioning and joining
  *
  *  @param id             uint16_t, identifier in the Geomess-network,
- *                        will also be the 16-bit short address of the 
+ *                        will also be the 16-bit short address of the
  *                        6LoWPAN-node.
  *  @param pan_identifier uint16_t, identification number of the PAN to
  *                        to set up or to join.
@@ -320,14 +330,14 @@ struct ieee_radio *radio_create(uint16_t id, uint16_t pan_identifier, uint32_t x
         IEEE_DBG("ERROR: Could not allocate Geomess radio-instance\n");
 		return NULL;
     }
-	
+
 	/* Try to make a connection with the geomess-network */
     if (!(gm->conn = geomess_open(id, x, y, range_max, range_good))) {
         IEEE_DBG("ERROR: Could not open geomess connection\n");
         PICO_FREE(gm);
         return NULL;
     }
-	
+
 	/* Set the callbacks of this radio-instance */
     gm->radio.transmit = radio_transmit;
     gm->radio.get_addr_short = radio_addr_short;
@@ -335,16 +345,16 @@ struct ieee_radio *radio_create(uint16_t id, uint16_t pan_identifier, uint32_t x
 	gm->radio.receive = radio_receive;
     gm->radio.get_addr_ext = radio_addr_ext;
     gm->radio.set_addr_short = radio_addr_short_set;
-	
+
 	/* Set the short-ID by command-line options */
 	gm->address_short = id;
 //    gm->address_short = IEEE_ADDR_BCAST_SHORT;
-	
+
 	/* Generate a random EUI64-address */
 	gen_addr_ext(id, gm->address_extended);
-	
+
 	/* Set the 802.15.4 specific parameters */
 	gm->pan_identifier = pan_identifier;
-	
+
 	return (struct ieee_radio *)gm;
 }

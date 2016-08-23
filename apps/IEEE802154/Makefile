@@ -66,3 +66,16 @@ clean:
 	rm -f $(PREFIX)/*.o
 	rm -rf build/lib/*.a
 	make -C $(PICOTCP) clean
+
+edge:
+	@./edge_router.sh
+
+pcap:
+	@./pcap.sh
+
+first:
+	@./host.sh 1 4 2aaa::ff:fe00:0
+
+second:
+	@./host.sh 2 8 2aaa::ff:fe00:0
+
