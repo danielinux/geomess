@@ -50,11 +50,19 @@ void udp(pico_time now, void *arg)
     pico_string_to_ipv6((char *)arg, dst.ip6.addr);
     
     s = pico_socket_open(PICO_PROTO_IPV6, PICO_PROTO_UDP, cb);
-    ret = pico_socket_sendto(s, buf, 70, &dst, short_be(0xF055));
+    //ret = pico_socket_sendto(s, buf, 70, &dst, short_be(0xF055));
+    ret = pico_socket_sendto_extended(s, buf, 70, &dst, short_be(0xF055), &info);
     printf("Sending too large UDP packet: %d (%s)\n", ret, strerror(pico_err));
     pico_socket_close(s);
     
     pico_timer_add(1000, udp, arg);
+}
+
+void rtable(pico_time now, void *arg)
+{
+    rtable_print();
+
+    pico_timer_add(1000, rtable, NULL);
 }
 
 
@@ -68,7 +76,7 @@ int main(int argc, const char *argv[]) {
     uint8_t size = 0;
     
     /* Too much arguments given? */
-    if (argc < 8)
+    if (argc > 8)
         exit(1);
     
     pico_string_to_ipv6("2aaa:0000:0000:0000:0000:0000:0000:0000", prefix.addr);
@@ -105,13 +113,16 @@ int main(int argc, const char *argv[]) {
         }
 
         /* Start pinging the remote host */
-        if (argc >= 8)
-            pico_icmp6_ping((void *)argv[7], NUM_PING, 1000, NUM_PING * 1000, size, ping, dev);
+        if (argc >= 8) {
+            pico_icmp6_ping(argv[7], NUM_PING, 1000, 10000, size, ping, dev);
+        }
     } else {
         /* Start sending garbage packets over UDP */
         if (argc >= 8)
             pico_timer_add(1000, udp, (void *)argv[7]);
     }
+
+    pico_timer_add(1000, rtable, NULL);
     
     
     /* Endless loop */
